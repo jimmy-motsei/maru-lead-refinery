@@ -1,9 +1,18 @@
 import OpenAI from 'openai';
 import { AIQualificationResult, Language, LeadUrgency } from './types';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAIClient() {
+  if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OpenAI API key is not configured');
+    }
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+}
 
 /**
  * AI Lead Qualification Engine
@@ -13,9 +22,7 @@ export async function qualifyLead(
   messageContent: string,
   source: string
 ): Promise<AIQualificationResult> {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OpenAI API key is not configured');
-  }
+  const client = getOpenAIClient();
 
   const systemPrompt = `You are a Lead Qualification Specialist for South African SMEs (Small and Medium Enterprises).
 
@@ -61,7 +68,7 @@ Return ONLY a valid JSON object with this exact structure:
 Is this a qualified lead? What's the urgency? Extract any contact info.`;
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await client.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
